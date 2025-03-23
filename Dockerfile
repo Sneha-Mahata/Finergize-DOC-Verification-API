@@ -35,4 +35,4 @@ RUN mkdir -p uploads
 ENV PYTHONUNBUFFERED=1
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "app:app"]
+CMD gunicorn --bind 0.0.0.0:$PORT app:app
