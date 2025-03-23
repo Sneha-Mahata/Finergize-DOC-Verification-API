@@ -7,21 +7,19 @@ RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
     tesseract-ocr \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-
-# Install dependencies one by one to avoid resolution conflicts
+# Install Python dependencies in the correct order
+RUN pip install --no-cache-dir numpy==1.23.5
+RUN pip install --no-cache-dir opencv-python-headless==4.6.0.66
 RUN pip install --no-cache-dir Flask==2.0.1 \
-    && pip install --no-cache-dir numpy==1.22.0 \
-    && pip install --no-cache-dir pytesseract==0.3.9 \
-    && pip install --no-cache-dir Pillow==9.0.1 \
-    && pip install --no-cache-dir gunicorn==20.1.0 \
-    && pip install --no-cache-dir werkzeug==2.0.1 \
-    && pip install --no-cache-dir opencv-python-headless==4.5.5.64 \
-    && pip install --no-cache-dir easyocr==1.6.2 \
-    && pip install --no-cache-dir ultralytics==8.0.20
+    werkzeug==2.0.1 \
+    gunicorn==20.1.0 \
+    Pillow==9.0.1 \
+    pytesseract==0.3.9 \
+    easyocr==1.6.2 \
+    ultralytics==8.0.20
 
 # Copy application code and model files
 COPY app.py .
