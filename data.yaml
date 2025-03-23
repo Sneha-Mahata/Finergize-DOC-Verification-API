@@ -1,0 +1,18 @@
+names:
+- Aadhar-Card
+- Date-of-Birth
+- Identity-Number
+- Name
+- Pan-Card
+- Passport
+- VOTER-ID
+nc: 7
+roboflow:
+  license: CC BY 4.0
+  project: ourproject-ouuvb
+  url: https://universe.roboflow.com/phi-0tsb7/ourproject-ouuvb/dataset/1
+  version: 1
+  workspace: phi-0tsb7
+test: ../test/images
+train: /kaggle/input/document-identity-object-detection/train/images
+val: /kaggle/input/document-identity-object-detection/valid/images
