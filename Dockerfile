@@ -37,4 +37,4 @@ RUN mkdir -p uploads
 ENV PYTHONUNBUFFERED=1
 
 # Run the application with the conda environment activated
-CMD conda run --no-capture-output -n app_env gunicorn --bind 0.0.0.0:$PORT app:app
+CMD conda run -n app_env python -c "import cv2_patch; import gunicorn.app.wsgiapp; gunicorn.app.wsgiapp.run()" --bind 0.0.0.0:$PORT app:app
