@@ -10,9 +10,14 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies in the correct order
+# Install Python dependencies
 RUN pip install --no-cache-dir numpy==1.23.5
-RUN pip install --no-cache-dir opencv-python==4.5.5.64
+# First uninstall any existing OpenCV packages
+RUN pip uninstall -y opencv-python opencv-python-headless
+# Then install a specific version that doesn't have the circular import issue
+RUN pip install --no-cache-dir opencv-contrib-python-headless==4.5.3.56
+
+# Install the rest of the dependencies
 RUN pip install --no-cache-dir Flask==2.0.1 \
     werkzeug==2.0.1 \
     gunicorn==20.1.0 \
@@ -22,9 +27,7 @@ RUN pip install --no-cache-dir Flask==2.0.1 \
     ultralytics==8.0.20
 
 # Copy application code and model files
-COPY app.py .
-COPY best.pt .
-COPY data.yaml .
+COPY . .
 
 # Create upload directory
 RUN mkdir -p uploads
