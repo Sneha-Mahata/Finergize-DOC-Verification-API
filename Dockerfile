@@ -10,9 +10,8 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies in the correct order
+# Install Python dependencies
 RUN pip install --no-cache-dir numpy==1.23.5
-# Use opencv-python instead of opencv-python-headless
 RUN pip install --no-cache-dir opencv-python==4.5.1.48
 RUN pip install --no-cache-dir Flask==2.0.1 \
     werkzeug==2.0.1 \
@@ -28,8 +27,8 @@ COPY . .
 # Create upload directory
 RUN mkdir -p uploads
 
-# Set environment variables
+# Environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Run the application
-CMD gunicorn --bind 0.0.0.0:$PORT app:app
+# Run with increased timeout
+CMD gunicorn --bind 0.0.0.0:$PORT --timeout 300 --workers 1 app:app

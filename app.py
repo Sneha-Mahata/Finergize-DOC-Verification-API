@@ -1,5 +1,9 @@
 import sys
 import types
+import os
+
+# Set a higher timeout for gunicorn
+os.environ["GUNICORN_CMD_ARGS"] = "--timeout=300"
 
 # Create mock objects with all necessary attributes
 class DummyObject:
@@ -17,7 +21,6 @@ sys.modules['cv2.gapi.wip.draw'] = DummyObject()
 
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
-import cv2_patch
 import cv2
 import numpy as np
 import os
@@ -27,16 +30,40 @@ from PIL import Image
 import io
 from ultralytics import YOLO
 import base64
+import threading
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Load YOLO model
-model = YOLO('best.pt')
-# Initialize EasyOCR reader
-reader = easyocr.Reader(['en'])
+# Global variables for lazy loading
+model = None
+reader = None
+model_lock = threading.Lock()
+reader_lock = threading.Lock()
+
+def get_model():
+    global model
+    with model_lock:
+        if model is None:
+            try:
+                model = YOLO('best.pt')
+            except Exception as e:
+                print(f"Error loading YOLO model: {e}")
+                raise
+    return model
+
+def get_reader():
+    global reader
+    with reader_lock:
+        if reader is None:
+            try:
+                reader = easyocr.Reader(['en'])
+            except Exception as e:
+                print(f"Error initializing EasyOCR: {e}")
+                raise
+    return reader
 
 def crop_box(image, bbox):
     """Crop image with bounding box"""
@@ -63,7 +90,7 @@ def extract_text_tesseract(image):
 
 def extract_text_easyocr(image):
     """Extract text using EasyOCR"""
-    results = reader.readtext(image)
+    results = get_reader().readtext(image)
     return ' '.join([text for _, text, conf in results if conf > 0.3])
 
 def extract_text_combined(image):
@@ -113,65 +140,79 @@ def predict():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
     
-    # Run YOLOv8 inference
-    results = model(filepath)[0]
-    
-    # Process detections
-    image = cv2.imread(filepath)
-    predictions = []
-    extracted_info = {}
-    
-    for i, box in enumerate(results.boxes):
-        bbox = box.xyxy[0].cpu().numpy().tolist()
-        conf = float(box.conf[0])
-        cls_id = int(box.cls[0])
-        class_name = results.names[cls_id]
+    try:
+        # Run YOLOv8 inference with lazy-loaded model
+        results = get_model()(filepath)[0]
         
-        # Skip low confidence detections
-        if conf < 0.5:
-            continue
+        # Process detections
+        image = cv2.imread(filepath)
+        predictions = []
+        extracted_info = {}
         
-        # Crop the region
-        cropped = crop_box(image, bbox)
+        for i, box in enumerate(results.boxes):
+            bbox = box.xyxy[0].cpu().numpy().tolist()
+            conf = float(box.conf[0])
+            cls_id = int(box.cls[0])
+            class_name = results.names[cls_id]
+            
+            # Skip low confidence detections
+            if conf < 0.5:
+                continue
+            
+            # Crop the region
+            cropped = crop_box(image, bbox)
+            
+            # Preprocess the cropped image
+            processed = preprocess_for_ocr(cropped)
+            
+            # Extract text
+            text = extract_text_combined(processed)
+            
+            pred_info = {
+                'class_name': class_name,
+                'confidence': conf,
+                'bbox': bbox,
+                'text': text
+            }
+            
+            predictions.append(pred_info)
+            extracted_info[class_name] = {
+                'text': text,
+                'confidence': conf,
+                'bbox': bbox
+            }
         
-        # Preprocess the cropped image
-        processed = preprocess_for_ocr(cropped)
+        # Draw bounding boxes
+        annotated_image = draw_boxes(image, predictions)
         
-        # Extract text
-        text = extract_text_combined(processed)
+        # Save annotated image
+        annotated_path = os.path.join(app.config['UPLOAD_FOLDER'], f"annotated_{filename}")
+        cv2.imwrite(annotated_path, annotated_image)
         
-        pred_info = {
-            'class_name': class_name,
-            'confidence': conf,
-            'bbox': bbox,
-            'text': text
-        }
+        # Convert image to base64 for response
+        _, buffer = cv2.imencode('.jpg', annotated_image)
+        annotated_b64 = base64.b64encode(buffer).decode('utf-8')
         
-        predictions.append(pred_info)
-        extracted_info[class_name] = {
-            'text': text,
-            'confidence': conf,
-            'bbox': bbox
-        }
+        # Clean up original file
+        os.remove(filepath)
+        
+        return jsonify({
+            'extracted_info': extracted_info,
+            'annotated_image': annotated_b64
+        })
     
-    # Draw bounding boxes
-    annotated_image = draw_boxes(image, predictions)
-    
-    # Save annotated image
-    annotated_path = os.path.join(app.config['UPLOAD_FOLDER'], f"annotated_{filename}")
-    cv2.imwrite(annotated_path, annotated_image)
-    
-    # Convert image to base64 for response
-    _, buffer = cv2.imencode('.jpg', annotated_image)
-    annotated_b64 = base64.b64encode(buffer).decode('utf-8')
-    
-    # Clean up original file
-    os.remove(filepath)
-    
-    return jsonify({
-        'extracted_info': extracted_info,
-        'annotated_image': annotated_b64
-    })
+    except Exception as e:
+        # Error handling
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({
+            'error': f'Processing error: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
+    # Pre-load model in development for faster response
+    if os.environ.get('FLASK_ENV') == 'development':
+        print("Preloading models...")
+        get_model()
+        get_reader()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
