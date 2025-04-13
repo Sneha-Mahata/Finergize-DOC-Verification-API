@@ -1,3 +1,20 @@
+import sys
+import types
+
+# Create mock objects with all necessary attributes
+class DummyObject:
+    def __getattr__(self, name):
+        return DummyObject()
+    
+    def __call__(self, *args, **kwargs):
+        return DummyObject()
+
+# Mock the problematic modules
+sys.modules['cv2.gapi'] = DummyObject()
+sys.modules['cv2.typing'] = DummyObject()
+sys.modules['cv2.gapi.wip'] = DummyObject()
+sys.modules['cv2.gapi.wip.draw'] = DummyObject()
+
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import cv2_patch
