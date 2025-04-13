@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
+import cv2_patch
 import cv2
 import numpy as np
 import os
