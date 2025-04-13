@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies in the correct order
 RUN pip install --no-cache-dir numpy==1.23.5
-RUN pip install --no-cache-dir opencv-python-headless==4.6.0.66
+RUN pip install --no-cache-dir opencv-python==4.5.5.64
 RUN pip install --no-cache-dir Flask==2.0.1 \
     werkzeug==2.0.1 \
     gunicorn==20.1.0 \
