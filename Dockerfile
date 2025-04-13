@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM continuumio/miniconda3:latest
 
 WORKDIR /app
 
@@ -10,11 +10,22 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and patch files first
-COPY requirements.txt cv2_patch.py ./
+# Create and activate a conda environment with OpenCV pre-installed
+RUN conda create -n app_env python=3.9 opencv=4.5.1 -c conda-forge && \
+    echo "conda activate app_env" >> ~/.bashrc
 
-# Install dependencies in one step to reduce Docker layers
-RUN pip install --no-cache-dir -r requirements.txt
+# Set the shell to bash for conda activation
+SHELL ["/bin/bash", "--login", "-c"]
+
+# Install Python dependencies in the conda environment
+RUN conda activate app_env && \
+    pip install flask==2.0.1 \
+    werkzeug==2.0.1 \
+    gunicorn==20.1.0 \
+    pillow==9.0.1 \
+    pytesseract==0.3.9 \
+    easyocr==1.6.2 \
+    ultralytics==8.0.20
 
 # Copy application code and model files
 COPY . .
@@ -23,8 +34,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Set environment variables
-ENV PYTHONUNBUFFERED=1 
-ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 
-# Run the application
-CMD gunicorn --bind 0.0.0.0:$PORT app:app
+# Run the application with the conda environment activated
+CMD conda run --no-capture-output -n app_env gunicorn --bind 0.0.0.0:$PORT app:app
