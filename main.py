@@ -1,7 +1,13 @@
+# Import the patch module first and apply the patch
+from cv2_patch import patch_cv2_modules
+patch_cv2_modules()
+
+# Now it's safe to import cv2
+import cv2
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import cv2
 import numpy as np
 import os
 import easyocr

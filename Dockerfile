@@ -8,10 +8,14 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     tesseract-ocr \
     libgomp1 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PyTorch first (for better layer caching)
 RUN pip install --no-cache-dir torch==2.0.1 torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cpu
+
+# Pre-install opencv separately to handle its dependencies better
+RUN pip install --no-cache-dir opencv-python-headless==4.5.1.48
 
 # Install Python dependencies separately for better caching
 COPY requirements.txt .
