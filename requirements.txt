@@ -2,8 +2,8 @@ fastapi==0.95.1
 uvicorn==0.22.0
 python-multipart==0.0.6
 numpy==1.23.5
-# opencv-python-headless is installed separately in the Dockerfile
+opencv-python-headless==4.8.0.74
 pytesseract==0.3.9
-easyocr==1.6.2
-Pillow==9.0.1
-ultralytics==8.0.20
+easyocr==1.7.0
+Pillow==9.5.0
+ultralytics==8.3.108
