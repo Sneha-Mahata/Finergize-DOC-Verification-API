@@ -34,22 +34,26 @@ def patch_ultralytics_modules():
             sys.modules[full_module_name] = new_module
             setattr(ultralytics.nn.modules, module_name, new_module)
     
-    # Add common classes to each module
-    common_classes = ['Conv', 'Sequential', 'Module', 'C2f', 'Bottleneck', 'SPPF', 'DFL']
+    # Extended list of classes
+    class_map = {
+        'conv': ['Conv', 'DWConv', 'GhostConv', 'LightConv', 'Focus', 'GhostBottleneck', 'ChannelAttention', 'SpatialAttention', 'CBAM', 'Concat', 'CrossConv', 'MixConv2d', 'AutoShape'],
+        'block': ['C2f', 'Bottleneck', 'BottleneckCSP', 'C3', 'C3x', 'SPP', 'SPPF', 'C3TR', 'C3Ghost', 'GhostBottleneck'],
+        'head': ['Detect', 'Segment', 'Pose', 'Classify'],
+        'transformer': ['TransformerBlock', 'TransformerLayer'],
+        'activation': ['SiLU', 'Hardswish', 'LeakyReLU', 'Mish']
+    }
     
-    for module_name in module_names:
-        module = sys.modules[f'ultralytics.nn.modules.{module_name}']
-        for class_name in common_classes:
-            # Create a dummy class that can be pickled
-            class_obj = type(class_name, (), {})
-            setattr(module, class_name, class_obj)
+    # Add the classes to their respective modules
+    for module_name, classes in class_map.items():
+        module = sys.modules.get(f'ultralytics.nn.modules.{module_name}')
+        if module:
+            for class_name in classes:
+                # Create a dummy class that can be pickled
+                class_obj = type(class_name, (), {})
+                setattr(module, class_name, class_obj)
     
-    # Explicitly add classes known to be needed
-    conv_module = sys.modules['ultralytics.nn.modules.conv']
-    setattr(conv_module, 'Conv', type('Conv', (), {}))
+    # Add base Module class
+    if not hasattr(ultralytics.nn, 'Module'):
+        ultralytics.nn.Module = type('Module', (), {})
     
-    block_module = sys.modules['ultralytics.nn.modules.block']
-    setattr(block_module, 'C2f', type('C2f', (), {}))
-    setattr(block_module, 'Bottleneck', type('Bottleneck', (), {}))
-    
-    print("Ultralytics module structure patched for compatibility")
+    print("Ultralytics module structure patched for compatibility with extended classes")
