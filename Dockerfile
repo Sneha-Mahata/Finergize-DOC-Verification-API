@@ -19,20 +19,19 @@ RUN pip install --no-cache-dir fastapi==0.95.1 uvicorn==0.22.0 \
     python-multipart==0.0.6 numpy==1.23.5 Pillow==9.5.0 \
     pytesseract==0.3.9 ultralytics==8.3.108
 
-# Copy application code
-COPY robust_main.py main.py
-
 # Create required directories
 RUN mkdir -p uploads results
+
+# Copy files one by one to ensure they exist
+COPY best.pt .
+COPY main.py .
+COPY cv2_patch.py .
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV OMP_NUM_THREADS=1
 ENV MKL_NUM_THREADS=1
-
-# Copy model file
-COPY best.pt .
 
 # Expose the port
 EXPOSE 8000
