@@ -1,9 +1,10 @@
 import torch.serialization
 from ultralytics.nn.tasks import DetectionModel
+from torch.nn.modules.container import Sequential
 import os
 
-# Add the DetectionModel to the safe globals list
-torch.serialization.add_safe_globals([DetectionModel])
+# Add both classes to the safe globals list
+torch.serialization.add_safe_globals([DetectionModel, Sequential])
 
 # Import the Flask app after adding safe globals
 from app import app
