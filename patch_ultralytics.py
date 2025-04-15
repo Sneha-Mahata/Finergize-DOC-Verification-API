@@ -36,9 +36,9 @@ def patch_ultralytics_modules():
     
     # Extended list of classes
     class_map = {
-        'conv': ['Conv', 'DWConv', 'GhostConv', 'LightConv', 'Focus', 'GhostBottleneck', 'ChannelAttention', 'SpatialAttention', 'CBAM', 'Concat', 'CrossConv', 'MixConv2d', 'AutoShape'],
-        'block': ['C2f', 'Bottleneck', 'BottleneckCSP', 'C3', 'C3x', 'SPP', 'SPPF', 'C3TR', 'C3Ghost', 'GhostBottleneck'],
-        'head': ['Detect', 'Segment', 'Pose', 'Classify'],
+        'conv': ['Conv', 'DWConv', 'GhostConv', 'LightConv', 'Focus', 'GhostBottleneck', 'ChannelAttention', 'SpatialAttention', 'CBAM', 'Concat', 'CrossConv', 'MixConv2d', 'AutoShape', 'DFL'],
+        'block': ['C2f', 'Bottleneck', 'BottleneckCSP', 'C3', 'C3x', 'SPP', 'SPPF', 'C3TR', 'C3Ghost', 'GhostBottleneck', 'DFL'],
+        'head': ['Detect', 'Segment', 'Pose', 'Classify', 'DFL'],
         'transformer': ['TransformerBlock', 'TransformerLayer'],
         'activation': ['SiLU', 'Hardswish', 'LeakyReLU', 'Mish']
     }
@@ -51,6 +51,12 @@ def patch_ultralytics_modules():
                 # Create a dummy class that can be pickled
                 class_obj = type(class_name, (), {})
                 setattr(module, class_name, class_obj)
+    
+    # Add DFL to multiple modules to be safe
+    for module_name in module_names:
+        module = sys.modules.get(f'ultralytics.nn.modules.{module_name}')
+        if module:
+            setattr(module, 'DFL', type('DFL', (), {}))
     
     # Add base Module class
     if not hasattr(ultralytics.nn, 'Module'):
