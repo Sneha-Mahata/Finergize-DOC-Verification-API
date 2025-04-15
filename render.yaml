@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: doc-verification-api
+    env: docker
+    buildCommand: docker build -t doc-verification-api .
+    startCommand: docker run -p $PORT:$PORT -e PORT=$PORT doc-verification-api
+    envVars:
+      - key: PORT
+        value: 10000
+    healthCheckPath: /
+    numInstances: 1
+    plan: starter # Adjust based on your needs

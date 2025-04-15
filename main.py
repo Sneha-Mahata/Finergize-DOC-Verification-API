@@ -1,26 +1,6 @@
-import sys
-import types
-import os
-
-# Set a higher timeout for gunicorn
-os.environ["GUNICORN_CMD_ARGS"] = "--timeout=300"
-
-# Create mock objects with all necessary attributes
-class DummyObject:
-    def __getattr__(self, name):
-        return DummyObject()
-    
-    def __call__(self, *args, **kwargs):
-        return DummyObject()
-
-# Mock the problematic modules
-sys.modules['cv2.gapi'] = DummyObject()
-sys.modules['cv2.typing'] = DummyObject()
-sys.modules['cv2.gapi.wip'] = DummyObject()
-sys.modules['cv2.gapi.wip.draw'] = DummyObject()
-
-from flask import Flask, request, jsonify
-from werkzeug.utils import secure_filename
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 import os
@@ -31,11 +11,28 @@ import io
 from ultralytics import YOLO
 import base64
 import threading
+import uvicorn
+from typing import Dict, List, Any, Optional
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Create FastAPI app
+app = FastAPI(
+    title="Document Verification API",
+    description="API for detecting and extracting text from identity documents using YOLO and OCR",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Create upload directory
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Global variables for lazy loading
 model = None
@@ -48,14 +45,7 @@ def get_model():
     with model_lock:
         if model is None:
             try:
-                # Import the patch function if not already done in app_wrapper
-                try:
-                    from patch_ultralytics import patch_ultralytics_modules
-                    patch_ultralytics_modules()
-                except ImportError:
-                    pass
-                
-                # Now load the model
+                # Load the model directly using YOLO
                 model = YOLO('best.pt')
             except Exception as e:
                 print(f"Error loading YOLO model: {e}")
@@ -127,28 +117,39 @@ def draw_boxes(image, predictions):
     
     return output
 
-@app.route('/', methods=['GET'])
-def index():
-    return jsonify({
+@app.get("/")
+async def root():
+    """Root endpoint - health check"""
+    return {
         "status": "active",
         "message": "Document Verification API is running. Use POST /predict to analyze images."
-    })
+    }
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image provided'}), 400
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    """
+    Analyze an image for document fields and extract text
     
-    file = request.files['image']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+    Args:
+        file: Image file to analyze
+    
+    Returns:
+        JSON response with extracted information and annotated image
+    """
+    # Validate the file
+    if not file:
+        raise HTTPException(status_code=400, detail="No file provided")
     
     # Save the uploaded file
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
+    file_extension = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    filepath = os.path.join(UPLOAD_FOLDER, f"upload_{file.filename or 'image'}{file_extension}")
     
     try:
+        # Read file content
+        contents = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(contents)
+        
         # Run YOLOv8 inference with lazy-loaded model
         results = get_model()(filepath)[0]
         
@@ -194,7 +195,7 @@ def predict():
         annotated_image = draw_boxes(image, predictions)
         
         # Save annotated image
-        annotated_path = os.path.join(app.config['UPLOAD_FOLDER'], f"annotated_{filename}")
+        annotated_path = os.path.join(UPLOAD_FOLDER, f"annotated_{file.filename or 'image'}{file_extension}")
         cv2.imwrite(annotated_path, annotated_image)
         
         # Convert image to base64 for response
@@ -204,23 +205,27 @@ def predict():
         # Clean up original file
         os.remove(filepath)
         
-        return jsonify({
+        return {
             'extracted_info': extracted_info,
             'annotated_image': annotated_b64
-        })
+        }
     
     except Exception as e:
         # Error handling
         if os.path.exists(filepath):
             os.remove(filepath)
-        return jsonify({
-            'error': f'Processing error: {str(e)}'
-        }), 500
+        raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
 
+# For local development
 if __name__ == '__main__':
-    # Pre-load model in development for faster response
-    if os.environ.get('FLASK_ENV') == 'development':
-        print("Preloading models...")
+    # Pre-load model
+    print("Preloading models...")
+    try:
         get_model()
         get_reader()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+        print("Models loaded successfully")
+    except Exception as e:
+        print(f"Error preloading models: {e}")
+    
+    # Run the FastAPI app
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get('PORT', 8000)))
