@@ -31,4 +31,4 @@ RUN mkdir -p uploads
 ENV PYTHONUNBUFFERED=1
 
 # Run with increased timeout
-CMD gunicorn --bind 0.0.0.0:$PORT --timeout 300 --workers 1 app_wrapper:app.app
+CMD gunicorn --bind 0.0.0.0:$PORT --timeout 300 --workers 1 app_wrapper:app
