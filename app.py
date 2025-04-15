@@ -48,27 +48,12 @@ def get_model():
     with model_lock:
         if model is None:
             try:
-                # Add system paths for compatibility
-                import sys
-                from pathlib import Path
-                
-                # Try to manually create the module path
-                import ultralytics
-                if not hasattr(ultralytics, 'nn'):
-                    ultralytics.nn = types.ModuleType('ultralytics.nn')
-                    sys.modules['ultralytics.nn'] = ultralytics.nn
-                
-                if not hasattr(ultralytics.nn, 'modules'):
-                    ultralytics.nn.modules = types.ModuleType('ultralytics.nn.modules')
-                    sys.modules['ultralytics.nn.modules'] = ultralytics.nn.modules
-                
-                # Create dummy Conv class
-                class DummyConv:
+                # Import the patch function if not already done in app_wrapper
+                try:
+                    from patch_ultralytics import patch_ultralytics_modules
+                    patch_ultralytics_modules()
+                except ImportError:
                     pass
-                
-                ultralytics.nn.modules.conv = types.ModuleType('ultralytics.nn.modules.conv')
-                ultralytics.nn.modules.conv.Conv = DummyConv
-                sys.modules['ultralytics.nn.modules.conv'] = ultralytics.nn.modules.conv
                 
                 # Now load the model
                 model = YOLO('best.pt')

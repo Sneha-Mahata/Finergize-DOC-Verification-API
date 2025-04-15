@@ -1,5 +1,7 @@
 import os
 import torch
+import sys
+from patch_ultralytics import patch_ultralytics_modules
 
 # Override torch.load to use weights_only=False
 original_torch_load = torch.load
@@ -11,7 +13,10 @@ def custom_torch_load(*args, **kwargs):
 # Replace torch.load with our custom version
 torch.load = custom_torch_load
 
-# Import the Flask app after modifying torch.load
+# Patch the module structure before importing app
+patch_ultralytics_modules()
+
+# Import the Flask app after patching
 from app import app
 
 # This is necessary for local development
