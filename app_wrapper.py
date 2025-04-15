@@ -1,12 +1,17 @@
-import torch.serialization
-from ultralytics.nn.tasks import DetectionModel
-from torch.nn.modules.container import Sequential
 import os
+import torch
 
-# Add both classes to the safe globals list
-torch.serialization.add_safe_globals([DetectionModel, Sequential])
+# Override torch.load to use weights_only=False
+original_torch_load = torch.load
+def custom_torch_load(*args, **kwargs):
+    # Force weights_only to False
+    kwargs['weights_only'] = False
+    return original_torch_load(*args, **kwargs)
 
-# Import the Flask app after adding safe globals
+# Replace torch.load with our custom version
+torch.load = custom_torch_load
+
+# Import the Flask app after modifying torch.load
 from app import app
 
 # This is necessary for local development
