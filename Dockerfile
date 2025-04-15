@@ -11,8 +11,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch to match training environment
-RUN pip install --no-cache-dir torch==2.4.1 torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cpu
+# Install PyTorch with compatible torchvision
+RUN pip install --no-cache-dir torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Copy requirements first for better caching
 COPY requirements.txt .
