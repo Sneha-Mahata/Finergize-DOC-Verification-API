@@ -1,9 +1,13 @@
 fastapi==0.95.1
 uvicorn==0.22.0
 python-multipart==0.0.6
-numpy==1.23.5
+numpy==1.26.4
+pandas==2.1.4
+IPython==7.34.0
+opencv-python==4.10.0
 opencv-python-headless==4.7.0.72
-pytesseract==0.3.9
-easyocr==1.7.0
+pytesseract==0.3.13
+easyocr==1.7.2
 Pillow==9.5.0
-ultralytics==8.3.108
+ultralytics==8.3.110
+pyyaml==6.0.2

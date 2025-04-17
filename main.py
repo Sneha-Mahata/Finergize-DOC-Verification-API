@@ -16,6 +16,11 @@ from typing import Dict, List, Any, Optional
 import uuid
 import time
 
+# Import the CV2 patch
+from cv2_patch import patch_cv2_modules
+# Apply the patch
+patch_cv2_modules()
+
 # Create FastAPI app
 app = FastAPI(
     title="Document Verification API",
@@ -277,7 +282,7 @@ async def version():
     }
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...), background_tasks: BackgroundTasks):
+async def predict(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """
     Analyze an image for document fields and extract text
     

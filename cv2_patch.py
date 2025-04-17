@@ -53,5 +53,4 @@ def patch_cv2_modules():
         gapi_module.wip = DummyClass()
         setattr(gapi_module.wip, 'draw', DummyClass())
         setattr(gapi_module.wip, 'GStreamerPipeline', DummyClass())
-    
-    print("OpenCV modules patched to prevent circular imports")
+        print("OpenCV modules patched to prevent circular imports")
